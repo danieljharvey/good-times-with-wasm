@@ -1,5 +1,5 @@
 use crate::types::expr::{get_expr_annotation, map_expr, Expr};
-use crate::types::ty::{remove_type_annotation, Type};
+use crate::types::ty::{map_type, remove_type_annotation, Type};
 use crate::types::typeerror::TypeError;
 
 use std::collections::HashMap;
@@ -10,13 +10,13 @@ pub fn elaborate_expr<Ann>(expr: Expr<Ann>) -> Result<Expr<Type<Ann>>, TypeError
 where
     Ann: Clone + Copy,
 {
-    let env = HashMap::new();
+    let mut env = HashMap::new();
 
-    infer(&env, expr)
+    infer(&mut env, expr)
 }
 
 fn infer<Ann>(
-    env: &HashMap<String, Type<Ann>>,
+    env: &mut HashMap<String, Type<Ann>>,
     expr: Expr<Ann>,
 ) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
 where
@@ -36,13 +36,32 @@ where
             pred_expr,
             then_expr,
             else_expr,
-        } => infer_if(&env, ann, *pred_expr, *then_expr, *else_expr),
-        Expr::ELet { .. } => todo!(),
+        } => infer_if(env, ann, *pred_expr, *then_expr, *else_expr),
+        Expr::ELet {
+            identifier,
+            bound_expr,
+            rest_expr,
+            ..
+        } => {
+            let bound_a = infer(env, *bound_expr)?;
+            env.insert(identifier, get_expr_annotation(bound_a));
+            infer(env, *rest_expr)
+        }
+        Expr::EVar { identifier, ann } => match env.get(&identifier).copied() {
+            Option::Some(ty) => {
+                let type_with_ann = map_type(ty, |_| ann);
+                Result::Ok(Expr::EVar {
+                    ann: type_with_ann,
+                    identifier,
+                })
+            }
+            Option::None => panic!("no"),
+        },
     }
 }
 
 fn infer_if<Ann>(
-    env: &HashMap<String, Type<Ann>>,
+    env: &mut HashMap<String, Type<Ann>>,
     ann: Ann,
     pred_expr: Expr<Ann>,
     then_expr: Expr<Ann>,
@@ -52,7 +71,7 @@ where
     Ann: Copy,
 {
     Result::map_err(
-        check(&env, pred_expr, Type::TBool { ann }),
+        check(env, pred_expr, Type::TBool { ann }),
         |err| match err {
             TypeError::TypeMismatch { type_b, .. } => TypeError::PredicateShouldBeBool {
                 ann: ann,
@@ -62,10 +81,10 @@ where
         },
     )?;
 
-    let then_a = infer(&env, then_expr)?;
+    let then_a = infer(env, then_expr)?;
 
     Result::map_err(
-        check(&env, else_expr, get_expr_annotation(then_a)),
+        check(env, else_expr, get_expr_annotation(then_a)),
         |err| match err {
             TypeError::TypeMismatch { type_a, type_b } => TypeError::MismatchedIfBranches {
                 ann,
@@ -78,7 +97,7 @@ where
 }
 
 fn check<Ann>(
-    env: &HashMap<String, Type<Ann>>,
+    env: &mut HashMap<String, Type<Ann>>,
     expr: Expr<Ann>,
     expected_type: Type<Ann>,
 ) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
@@ -104,7 +123,7 @@ where
 }
 
 #[test]
-fn basic_prim_values() {
+fn test_basic_prim_values() {
     let int_expr = Expr::EInt { ann: (), int: 1 };
 
     assert_eq!(
@@ -164,4 +183,24 @@ fn basic_prim_values() {
         Result::map(elaborate_expr(if_that_returns_ints), get_expr_annotation),
         Result::Ok(Type::TInt { ann: () })
     )
+}
+
+#[test]
+fn test_let_and_var() {
+    let int_expr = Expr::EInt { ann: (), int: 1 };
+
+    let let_and_fetch = Expr::ELet {
+        ann: (),
+        identifier: "a".to_string(),
+        bound_expr: Box::new(int_expr.clone()),
+        rest_expr: Box::new(Expr::EVar {
+            ann: (),
+            identifier: "a".to_string(),
+        }),
+    };
+
+    assert_eq!(
+        Result::map(elaborate_expr(let_and_fetch.clone()), get_expr_annotation),
+        Result::Ok(Type::TInt { ann: () })
+    );
 }

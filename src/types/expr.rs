@@ -21,6 +21,10 @@ pub enum Expr<Ann> {
         bound_expr: Box<Self>,
         rest_expr: Box<Self>,
     },
+    EVar {
+        ann: Ann,
+        identifier: String,
+    },
 }
 
 pub fn map_expr<F, A, B>(expr: Expr<A>, f: F) -> Expr<B>
@@ -32,6 +36,10 @@ where
     match expr {
         Expr::EInt { ann, int } => Expr::EInt { ann: f(ann), int },
         Expr::EBool { ann, bool } => Expr::EBool { ann: f(ann), bool },
+        Expr::EVar { ann, identifier } => Expr::EVar {
+            ann: f(ann),
+            identifier,
+        },
         Expr::EIf {
             ann,
             pred_expr,
@@ -63,5 +71,6 @@ pub fn get_expr_annotation<Ann>(expr: Expr<Ann>) -> Ann {
         Expr::EBool { ann, .. } => ann,
         Expr::EIf { ann, .. } => ann,
         Expr::ELet { ann, .. } => ann,
+        Expr::EVar { ann, .. } => ann,
     }
 }
