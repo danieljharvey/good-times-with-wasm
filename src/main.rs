@@ -1,91 +1,10 @@
-#[derive(Debug, PartialEq, Clone)]
-enum Expr<Ann> {
-    EInt {
-        ann: Ann,
-        int: i32,
-    },
-    EBool {
-        ann: Ann,
-        bool: bool,
-    },
-    EIf {
-        ann: Ann,
-        pred_expr: Box<Self>,
-        then_expr: Box<Self>,
-        else_expr: Box<Self>,
-    },
-}
+use interpret::interpreter::interpret_expr;
+use types::expr::{get_expr_annotation, map_expr, Expr};
+use types::ty::{remove_type_annotation, Type};
+use types::typeerror::TypeError;
 
-fn map_expr<F, A, B>(expr: Expr<A>, f: F) -> Expr<B>
-where
-    F: FnOnce(A) -> B + Copy,
-    A: Clone,
-    B: Clone,
-{
-    match expr {
-        Expr::EInt { ann, int } => Expr::EInt { ann: f(ann), int },
-        Expr::EBool { ann, bool } => Expr::EBool { ann: f(ann), bool },
-        Expr::EIf {
-            ann,
-            pred_expr,
-            then_expr,
-            else_expr,
-        } => Expr::EIf {
-            ann: f(ann),
-            pred_expr: Box::new(map_expr(*pred_expr, f)),
-            then_expr: Box::new(map_expr(*then_expr, f)),
-            else_expr: Box::new(map_expr(*else_expr, f)),
-        },
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum Type<Ann>
-where
-    Ann: Clone + Copy,
-{
-    TInt { ann: Ann },
-    TBool { ann: Ann },
-}
-
-fn map_type<F, A, B>(a: Type<A>, f: F) -> Type<B>
-where
-    F: FnOnce(A) -> B,
-    A: Clone + Copy,
-    B: Clone + Copy,
-{
-    match a {
-        Type::TInt { ann } => Type::TInt { ann: f(ann) },
-        Type::TBool { ann } => Type::TBool { ann: f(ann) },
-    }
-}
-
-fn get_expr_annotation<Ann>(expr: Expr<Ann>) -> Ann {
-    match expr {
-        Expr::EInt { ann, .. } => ann,
-        Expr::EBool { ann, .. } => ann,
-        Expr::EIf { ann, .. } => ann,
-    }
-}
-#[derive(Debug, PartialEq)]
-enum TypeError<Ann>
-where
-    Ann: Clone + Copy,
-{
-    PredicateShouldBeBool {
-        ann: Ann,
-        found: Type<Ann>,
-    },
-    MismatchedIfBranches {
-        ann: Ann,
-        then_found: Type<Ann>,
-        else_found: Type<Ann>,
-    },
-    TypeMismatch {
-        type_a: Type<Ann>,
-        type_b: Type<Ann>,
-    },
-}
+pub mod interpret;
+pub mod types;
 
 fn infer<Ann>(expr: Expr<Ann>) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
 where
@@ -141,14 +60,6 @@ where
     // when we're doing real subtyping we should probably munge `combined_type`
     Result::Ok(map_expr(expr_a, |_| combined_type))
 }
-
-fn remove_type_annotation<Ann>(ty: Type<Ann>) -> Type<()>
-where
-    Ann: Clone + Copy,
-{
-    map_type(ty, |_| ())
-}
-
 fn subtype<Ann>(type_a: Type<Ann>, type_b: Type<Ann>) -> Result<Type<Ann>, TypeError<Ann>>
 where
     Ann: Clone + Copy,
@@ -223,7 +134,12 @@ fn basic_prim_values() {
     )
 }
 
+// typecheck an arbitrary thing
 fn main() {
-    let _oh = infer(Expr::EInt { ann: (), int: 1 });
-    ()
+    match infer(Expr::EInt { ann: (), int: 1 }) {
+        Ok(expr) => {
+            interpret_expr(expr);
+        }
+        Err(err) => println!("{:?}", err),
+    }
 }
