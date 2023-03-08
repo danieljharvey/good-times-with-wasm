@@ -1,4 +1,5 @@
 #[derive(Debug, PartialEq, Clone)]
+
 pub enum Expr<Ann> {
     EInt {
         ann: Ann,
@@ -13,6 +14,12 @@ pub enum Expr<Ann> {
         pred_expr: Box<Self>,
         then_expr: Box<Self>,
         else_expr: Box<Self>,
+    },
+    ELet {
+        ann: Ann,
+        identifier: String,
+        bound_expr: Box<Self>,
+        rest_expr: Box<Self>,
     },
 }
 
@@ -36,6 +43,17 @@ where
             then_expr: Box::new(map_expr(*then_expr, f)),
             else_expr: Box::new(map_expr(*else_expr, f)),
         },
+        Expr::ELet {
+            ann,
+            identifier,
+            bound_expr,
+            rest_expr,
+        } => Expr::ELet {
+            ann: f(ann),
+            identifier,
+            bound_expr: Box::new(map_expr(*bound_expr, f)),
+            rest_expr: Box::new(map_expr(*rest_expr, f)),
+        },
     }
 }
 
@@ -44,5 +62,6 @@ pub fn get_expr_annotation<Ann>(expr: Expr<Ann>) -> Ann {
         Expr::EInt { ann, .. } => ann,
         Expr::EBool { ann, .. } => ann,
         Expr::EIf { ann, .. } => ann,
+        Expr::ELet { ann, .. } => ann,
     }
 }

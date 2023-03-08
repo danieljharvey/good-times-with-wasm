@@ -2,7 +2,23 @@ use crate::types::expr::{get_expr_annotation, map_expr, Expr};
 use crate::types::ty::{remove_type_annotation, Type};
 use crate::types::typeerror::TypeError;
 
-pub fn infer<Ann>(expr: Expr<Ann>) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
+use std::collections::HashMap;
+
+// entry point, here we create an empty type checking environment
+// and then start the internal bits
+pub fn elaborate_expr<Ann>(expr: Expr<Ann>) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
+where
+    Ann: Clone + Copy,
+{
+    let env = HashMap::new();
+
+    infer(&env, expr)
+}
+
+fn infer<Ann>(
+    env: &HashMap<String, Type<Ann>>,
+    expr: Expr<Ann>,
+) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
 where
     Ann: Clone + Copy,
 {
@@ -20,11 +36,13 @@ where
             pred_expr,
             then_expr,
             else_expr,
-        } => infer_if(ann, *pred_expr, *then_expr, *else_expr),
+        } => infer_if(&env, ann, *pred_expr, *then_expr, *else_expr),
+        Expr::ELet { .. } => todo!(),
     }
 }
 
 fn infer_if<Ann>(
+    env: &HashMap<String, Type<Ann>>,
     ann: Ann,
     pred_expr: Expr<Ann>,
     then_expr: Expr<Ann>,
@@ -33,18 +51,21 @@ fn infer_if<Ann>(
 where
     Ann: Copy,
 {
-    Result::map_err(check(pred_expr, Type::TBool { ann }), |err| match err {
-        TypeError::TypeMismatch { type_b, .. } => TypeError::PredicateShouldBeBool {
-            ann: ann,
-            found: type_b,
+    Result::map_err(
+        check(&env, pred_expr, Type::TBool { ann }),
+        |err| match err {
+            TypeError::TypeMismatch { type_b, .. } => TypeError::PredicateShouldBeBool {
+                ann: ann,
+                found: type_b,
+            },
+            other => other,
         },
-        other => other,
-    })?;
+    )?;
 
-    let then_a = infer(then_expr)?;
+    let then_a = infer(&env, then_expr)?;
 
     Result::map_err(
-        check(else_expr, get_expr_annotation(then_a)),
+        check(&env, else_expr, get_expr_annotation(then_a)),
         |err| match err {
             TypeError::TypeMismatch { type_a, type_b } => TypeError::MismatchedIfBranches {
                 ann,
@@ -56,16 +77,21 @@ where
     )
 }
 
-fn check<Ann>(expr: Expr<Ann>, expected_type: Type<Ann>) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
+fn check<Ann>(
+    env: &HashMap<String, Type<Ann>>,
+    expr: Expr<Ann>,
+    expected_type: Type<Ann>,
+) -> Result<Expr<Type<Ann>>, TypeError<Ann>>
 where
     Ann: Clone + Copy,
 {
-    let expr_a = infer(expr)?;
+    let expr_a = infer(env, expr)?;
     let found_type = get_expr_annotation(expr_a.clone());
     let combined_type = subtype(expected_type, found_type)?;
     // when we're doing real subtyping we should probably munge `combined_type`
     Result::Ok(map_expr(expr_a, |_| combined_type))
 }
+
 fn subtype<Ann>(type_a: Type<Ann>, type_b: Type<Ann>) -> Result<Type<Ann>, TypeError<Ann>>
 where
     Ann: Clone + Copy,
@@ -82,7 +108,7 @@ fn basic_prim_values() {
     let int_expr = Expr::EInt { ann: (), int: 1 };
 
     assert_eq!(
-        Result::map(infer(int_expr.clone()), get_expr_annotation),
+        Result::map(elaborate_expr(int_expr.clone()), get_expr_annotation),
         Result::Ok(Type::TInt { ann: () })
     );
 
@@ -92,7 +118,7 @@ fn basic_prim_values() {
     };
 
     assert_eq!(
-        Result::map(infer(bool_expr.clone()), get_expr_annotation),
+        Result::map(elaborate_expr(bool_expr.clone()), get_expr_annotation),
         Result::Ok(Type::TBool { ann: () })
     );
 
@@ -104,7 +130,7 @@ fn basic_prim_values() {
     };
 
     assert_eq!(
-        infer(if_with_wrong_pred_type),
+        elaborate_expr(if_with_wrong_pred_type),
         Result::Err(TypeError::PredicateShouldBeBool {
             ann: (),
             found: Type::TInt { ann: () }
@@ -119,7 +145,7 @@ fn basic_prim_values() {
     };
 
     assert_eq!(
-        infer(if_with_mismatched_branch_types),
+        elaborate_expr(if_with_mismatched_branch_types),
         Result::Err(TypeError::MismatchedIfBranches {
             ann: (),
             then_found: Type::TBool { ann: () },
@@ -135,7 +161,7 @@ fn basic_prim_values() {
     };
 
     assert_eq!(
-        Result::map(infer(if_that_returns_ints), get_expr_annotation),
+        Result::map(elaborate_expr(if_that_returns_ints), get_expr_annotation),
         Result::Ok(Type::TInt { ann: () })
     )
 }

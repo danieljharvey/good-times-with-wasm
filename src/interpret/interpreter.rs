@@ -17,6 +17,7 @@ pub fn interpret_expr<Ann>(expr: Expr<Ann>) -> Expr<Ann> {
                 _other => todo!(),
             }
         }
+        Expr::ELet { rest_expr, .. } => interpret_expr(*rest_expr),
     }
 }
 
