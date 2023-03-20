@@ -1,6 +1,7 @@
 use interpret::interpreter::interpret_expr;
 use typecheck::elaborate::elaborate_expr;
 use types::expr::Expr;
+pub mod compile;
 pub mod interpret;
 pub mod typecheck;
 pub mod types;

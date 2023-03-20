@@ -22,9 +22,8 @@
             cargo
             cargo-watch
             rustfmt
-            clang_14
-            llvmPackages_14.llvm
-            libxml2
+            # libxml2
+            wasmtime
           ];
 
           # put clang_14 on the path
