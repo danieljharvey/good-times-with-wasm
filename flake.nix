@@ -22,8 +22,7 @@
             cargo
             cargo-watch
             rustfmt
-            # libxml2
-            wasmtime
+            libiconv
           ];
 
           # put clang_14 on the path

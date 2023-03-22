@@ -1,9 +1,9 @@
-use std::io::Write;
-use std::process::Command;
 use wasm_encoder::{
     CodeSection, Export, ExportSection, Function, FunctionSection, Instruction, Module,
     TypeSection, ValType,
 };
+
+use super::runwasm::run_wasm;
 
 pub fn output_wasm() -> Vec<u8> {
     let mut module = Module::new();
@@ -23,7 +23,7 @@ pub fn output_wasm() -> Vec<u8> {
 
     // Encode the export section.
     let mut exports = ExportSection::new();
-    exports.export("f", Export::Function(0));
+    exports.export("main", Export::Function(0));
     module.section(&exports);
 
     // Encode the code section.
@@ -43,14 +43,13 @@ pub fn output_wasm() -> Vec<u8> {
     wasm_bytes
 }
 
-fn run_wasm(wasm_bytes: Vec<u8>) -> std::io::Result<()> {
-    let mut file = std::fs::File::create("test.wasm")?;
-    file.write_all(&wasm_bytes)?;
-    Ok(())
-}
-
 #[test]
-fn test_wasm() -> std::io::Result<()> {
-    let wasm_bytes = output_wasm();
-    run_wasm(wasm_bytes)
+fn run_sample_wasm() {
+    match run_wasm(output_wasm()) {
+        Ok(a) => assert_eq!(a, 42),
+        Err(err) => {
+            println!("{}", err);
+            assert_eq!(true, false)
+        }
+    }
 }
