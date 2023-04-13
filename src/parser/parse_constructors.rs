@@ -23,3 +23,11 @@ pub fn var(identifier: &str) -> Expr<()> {
         identifier: identifier.to_string(),
     }
 }
+
+// construct if
+pub fn if(pred_expr: Expr<()>, then_expr: Expr<()>, else_expr: Expr<()>) -> Expr<()> {
+    Expr::EIf {
+        ann: (),
+        pred_expr: Box::new(pred_expr),
+        then_expr: Box::new(then_expr),else_expr:Box::new(else_expr)}}
+

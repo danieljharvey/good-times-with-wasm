@@ -1,5 +1,5 @@
 use super::lexeme;
-use crate::parser::parse_constructors::{bool, int, var};
+use crate::parser::parse_constructors::{bool, int, var, if};
 use crate::types::expr;
 use nom::branch::alt;
 use nom::{
@@ -42,6 +42,13 @@ fn parse_my_var(input: &str) -> IResult<&str, ParseExpr> {
     Ok((input, var(var_val)))
 }
 
+#[test]
+fn test_parse_my_var() {
+    assert_eq!(parse_my_var("p"), Ok(("", var("p"))));
+    assert_eq!(parse_my_var("poo"), Ok(("", var("poo"))));
+    assert_eq!(parse_my_var("poo "), Ok((" ", var("poo"))))
+}
+
 fn parse_true(input: &str) -> IResult<&str, ParseExpr> {
     map(tag("True"), |_| bool(true))(input)
 }
@@ -61,13 +68,18 @@ fn test_parse_my_bool() {
     assert_eq!(parse_my_bool("True100"), Ok(("100", bool(true))));
 }
 
-#[test]
-fn test_parse_my_var() {
-    assert_eq!(parse_my_var("p"), Ok(("", var("p"))));
-    assert_eq!(parse_my_var("poo"), Ok(("", var("poo"))));
-    assert_eq!(parse_my_var("poo "), Ok((" ", var("poo"))))
+pub fn parse_my_if(input: &str) -> IResult<&str, ParseExpr> {
+    let (input, _) = lexeme::ws(tag("if"))(input)?;
+    let (input, pred_expr) = parse_my_expr(input)?;
+    let (input, _) = lexeme::ws(tag("then"))(input)?;
+    let (input, then_expr) = parse_my_expr(input)?;
+    let (input, _) = lexeme::ws(tag("else"))(input)?;
+    let (input, else_expr) = parse_my_expr(input)?;
+
+    Result::Ok(if(pred_expr,then_expr,else_expr))
 }
 
 pub fn parse_my_expr(input: &str) -> IResult<&str, ParseExpr> {
-    alt((parse_my_bool, parse_my_int, parse_my_var))(input)
+    alt((parse_my_bool, parse_my_int, parse_my_var,
+                    parse_my_if))(input)
 }
