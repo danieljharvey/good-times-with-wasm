@@ -4,7 +4,7 @@ use wasm_encoder::{
 };
 
 use super::runwasm::run_wasm;
-use crate::types::expr::Expr;
+use crate::types::expr::{Expr, Prim};
 
 pub fn expr_to_wasm<Ann>(expr: Expr<Ann>) -> Vec<u8> {
     let mut module = Module::new();
@@ -45,23 +45,37 @@ fn expr_to_function<Ann>(expr: Expr<Ann>) -> wasm_encoder::Function {
     let mut f = Function::new(locals);
 
     match expr {
-        Expr::EInt { int, .. } => f.instruction(&Instruction::I32Const(int)),
+        Expr::EPrim { prim, .. } => f.instruction(&prim_to_const(prim.clone())),
         _ => &mut f,
     };
     f.instruction(&Instruction::End);
     f
 }
 
+fn prim_to_const(prim: Prim) -> Instruction<'static> {
+    match prim {
+        Prim::PInt { int } => Instruction::I32Const(int),
+        Prim::PBool { bool: true } => Instruction::I32Const(1),
+        Prim::PBool { bool: false } => Instruction::I32Const(0),
+    }
+}
+
 #[test]
 fn run_sample_wasm() {
     let expr = Expr::EIf {
         ann: (),
-        pred_expr: Box::new(Expr::EBool {
+        pred_expr: Box::new(Expr::EPrim {
             ann: (),
-            bool: false,
+            prim: Prim::PBool { bool: false },
         }),
-        then_expr: Box::new(Expr::EInt { ann: (), int: 21 }),
-        else_expr: Box::new(Expr::EInt { ann: (), int: 42 }),
+        then_expr: Box::new(Expr::EPrim {
+            ann: (),
+            prim: Prim::PInt { int: 21 },
+        }),
+        else_expr: Box::new(Expr::EPrim {
+            ann: (),
+            prim: Prim::PInt { int: 42 },
+        }),
     };
 
     match run_wasm(expr_to_wasm(expr)) {

@@ -1,13 +1,9 @@
 #[derive(Debug, PartialEq, Clone)]
 
 pub enum Expr<Ann> {
-    EInt {
+    EPrim {
         ann: Ann,
-        int: i32,
-    },
-    EBool {
-        ann: Ann,
-        bool: bool,
+        prim: Prim,
     },
     EIf {
         ann: Ann,
@@ -27,6 +23,12 @@ pub enum Expr<Ann> {
     },
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Prim {
+    PBool { bool: bool },
+    PInt { int: i32 },
+}
+
 pub fn map_expr<F, A, B>(expr: Expr<A>, f: F) -> Expr<B>
 where
     F: FnOnce(A) -> B + Copy,
@@ -34,8 +36,7 @@ where
     B: Clone,
 {
     match expr {
-        Expr::EInt { ann, int } => Expr::EInt { ann: f(ann), int },
-        Expr::EBool { ann, bool } => Expr::EBool { ann: f(ann), bool },
+        Expr::EPrim { ann, prim } => Expr::EPrim { ann: f(ann), prim },
         Expr::EVar { ann, identifier } => Expr::EVar {
             ann: f(ann),
             identifier,
@@ -67,8 +68,7 @@ where
 
 pub fn get_expr_annotation<Ann>(expr: Expr<Ann>) -> Ann {
     match expr {
-        Expr::EInt { ann, .. } => ann,
-        Expr::EBool { ann, .. } => ann,
+        Expr::EPrim { ann, .. } => ann,
         Expr::EIf { ann, .. } => ann,
         Expr::ELet { ann, .. } => ann,
         Expr::EVar { ann, .. } => ann,

@@ -1,4 +1,5 @@
-use crate::types::expr::{get_expr_annotation, map_expr, Expr};
+use crate::parser::parse_constructors::{bool, int};
+use crate::types::expr::{get_expr_annotation, map_expr, Expr, Prim};
 use crate::types::ty::{map_type, remove_type_annotation, Type};
 use crate::types::typeerror::TypeError;
 
@@ -23,13 +24,12 @@ where
     Ann: Clone + Copy,
 {
     match expr {
-        Expr::EInt { ann, int } => Result::Ok(Expr::EInt {
-            ann: Type::TInt { ann },
-            int: int,
-        }),
-        Expr::EBool { ann, bool } => Result::Ok(Expr::EBool {
-            ann: Type::TBool { ann },
-            bool: bool,
+        Expr::EPrim { ann, prim } => Result::Ok(Expr::EPrim {
+            ann: match prim {
+                Prim::PInt { .. } => Type::TInt { ann },
+                Prim::PBool { .. } => Type::TBool { ann },
+            },
+            prim: prim,
         }),
         Expr::EIf {
             ann,
@@ -124,17 +124,14 @@ where
 
 #[test]
 fn test_basic_prim_values() {
-    let int_expr = Expr::EInt { ann: (), int: 1 };
+    let int_expr = int(1);
 
     assert_eq!(
         Result::map(elaborate_expr(int_expr.clone()), get_expr_annotation),
         Result::Ok(Type::TInt { ann: () })
     );
 
-    let bool_expr = Expr::EBool {
-        ann: (),
-        bool: true,
-    };
+    let bool_expr = bool(true);
 
     assert_eq!(
         Result::map(elaborate_expr(bool_expr.clone()), get_expr_annotation),
@@ -187,7 +184,7 @@ fn test_basic_prim_values() {
 
 #[test]
 fn test_let_and_var() {
-    let int_expr = Expr::EInt { ann: (), int: 1 };
+    let int_expr = int(1);
 
     let let_and_fetch = Expr::ELet {
         ann: (),

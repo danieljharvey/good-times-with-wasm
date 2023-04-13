@@ -1,9 +1,9 @@
-use crate::types::expr::Expr;
+use crate::parser::parse_constructors::{bool, int};
+use crate::types::expr::{Expr, Prim};
 
 pub fn interpret_expr<Ann>(expr: Expr<Ann>) -> Expr<Ann> {
     match expr {
-        Expr::EInt { ann, int } => Expr::EInt { ann, int },
-        Expr::EBool { ann, bool } => Expr::EBool { ann, bool },
+        Expr::EPrim { ann, prim } => Expr::EPrim { ann, prim },
         Expr::EIf {
             pred_expr,
             then_expr,
@@ -12,8 +12,12 @@ pub fn interpret_expr<Ann>(expr: Expr<Ann>) -> Expr<Ann> {
         } => {
             let interpreted_pred = interpret_expr(*pred_expr);
             match interpreted_pred {
-                Expr::EBool { bool: true, .. } => interpret_expr(*then_expr),
-                Expr::EBool { bool: false, .. } => interpret_expr(*else_expr),
+                Expr::EPrim { prim, .. } => match prim {
+                    Prim::PBool { bool: true, .. } => interpret_expr(*then_expr),
+                    Prim::PBool { bool: false, .. } => interpret_expr(*else_expr),
+                    _ => todo!(),
+                },
+
                 _other => todo!(),
             }
         }
@@ -24,14 +28,13 @@ pub fn interpret_expr<Ann>(expr: Expr<Ann>) -> Expr<Ann> {
 
 #[test]
 fn test_interpret_if() {
-    let int_one = Expr::EInt { ann: (), int: 1 };
-    let int_two = Expr::EInt { ann: (), int: 2 };
+    let int_one = int(1);
+
+    let int_two = int(2);
+
     let if_expr = Expr::EIf {
         ann: (),
-        pred_expr: Box::new(Expr::EBool {
-            ann: (),
-            bool: true,
-        }),
+        pred_expr: Box::new(bool(true)),
         then_expr: Box::new(int_one.clone()),
         else_expr: Box::new(int_two.clone()),
     };
@@ -40,9 +43,9 @@ fn test_interpret_if() {
 
     let if_expr_2 = Expr::EIf {
         ann: (),
-        pred_expr: Box::new(Expr::EBool {
+        pred_expr: Box::new(Expr::EPrim {
             ann: (),
-            bool: false,
+            prim: Prim::PBool { bool: false },
         }),
         then_expr: Box::new(int_one.clone()),
         else_expr: Box::new(int_two.clone()),
