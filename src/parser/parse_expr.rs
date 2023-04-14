@@ -1,5 +1,5 @@
 use super::lexeme;
-use crate::parser::parse_constructors::{bool, int, var, if};
+use crate::parser::parse_constructors::{bool, int, mk_if, var};
 use crate::types::expr;
 use nom::branch::alt;
 use nom::{
@@ -37,9 +37,23 @@ fn test_parse_my_int() {
     assert_eq!(parse_my_int("11dog"), Ok(("dog", int(11))));
 }
 
+// check we aren't using protected words for variables
+fn var_is_protected(ident: String) -> bool {
+    vec![
+        "True".to_string(),
+        "False".to_string(),
+        "if".to_string(),
+        "then".to_string(),
+        "else".to_string(),
+    ]
+    .contains(&ident)
+}
 fn parse_my_var(input: &str) -> IResult<&str, ParseExpr> {
     let (input, var_val) = lexeme::ws(alpha1)(input)?;
-    Ok((input, var(var_val)))
+    match var_is_protected(var_val) {
+        true => Err(print!("Cannot use {0} as variable", var_val)),
+        false => Ok((input, var(var_val))),
+    }
 }
 
 #[test]
@@ -76,10 +90,17 @@ pub fn parse_my_if(input: &str) -> IResult<&str, ParseExpr> {
     let (input, _) = lexeme::ws(tag("else"))(input)?;
     let (input, else_expr) = parse_my_expr(input)?;
 
-    Result::Ok(if(pred_expr,then_expr,else_expr))
+    Ok((input, mk_if(pred_expr, then_expr, else_expr)))
+}
+
+#[test]
+fn test_parse_my_if() {
+    assert_eq!(
+        parse_my_if("if True then 1 else 2"),
+        Ok(("", mk_if(bool(true), int(1), int(2))))
+    );
 }
 
 pub fn parse_my_expr(input: &str) -> IResult<&str, ParseExpr> {
-    alt((parse_my_bool, parse_my_int, parse_my_var,
-                    parse_my_if))(input)
+    alt((parse_my_bool, parse_my_int, parse_my_var, parse_my_if))(input)
 }
