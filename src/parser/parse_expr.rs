@@ -48,10 +48,17 @@ fn var_is_protected(ident: String) -> bool {
     ]
     .contains(&ident)
 }
+
+// jesus
 fn parse_my_var(input: &str) -> IResult<&str, ParseExpr> {
     let (input, var_val) = lexeme::ws(alpha1)(input)?;
-    match var_is_protected(var_val) {
-        true => Err(print!("Cannot use {0} as variable", var_val)),
+    match var_is_protected(var_val.to_string()) {
+        true => Err(nom::Err::Error {
+            0: nom::error::Error {
+                code: nom::error::ErrorKind::Tag,
+                input: "",
+            },
+        }),
         false => Ok((input, var(var_val))),
     }
 }
