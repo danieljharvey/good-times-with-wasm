@@ -32,6 +32,7 @@ fn parse_my_int(input: &str) -> IResult<&str, ParseExpr> {
 
 #[test]
 fn test_parse_my_int() {
+    assert_eq!(parse_my_int(" 1"), Ok(("", int(1))));
     assert_eq!(parse_my_int("1"), Ok(("", int(1))));
     assert_eq!(parse_my_int("11"), Ok(("", int(11))));
     assert_eq!(parse_my_int("11dog"), Ok(("dog", int(11))));
@@ -56,7 +57,7 @@ fn parse_my_var(input: &str) -> IResult<&str, ParseExpr> {
         true => Err(nom::Err::Error {
             0: nom::error::Error {
                 code: nom::error::ErrorKind::Tag,
-                input: "",
+                input: input,
             },
         }),
         false => Ok((input, var(var_val))),
@@ -65,6 +66,9 @@ fn parse_my_var(input: &str) -> IResult<&str, ParseExpr> {
 
 #[test]
 fn test_parse_my_var() {
+    assert_ne!(parse_my_var("False"), Ok(("", var("False"))));
+    assert_ne!(parse_my_var("True"), Ok(("", var("True"))));
+    assert_eq!(parse_my_var(" p"), Ok(("", var("p"))));
     assert_eq!(parse_my_var("p"), Ok(("", var("p"))));
     assert_eq!(parse_my_var("poo"), Ok(("", var("poo"))));
     assert_eq!(parse_my_var("poo "), Ok((" ", var("poo"))))
@@ -103,11 +107,24 @@ pub fn parse_my_if(input: &str) -> IResult<&str, ParseExpr> {
 #[test]
 fn test_parse_my_if() {
     assert_eq!(
-        parse_my_if("if True then 1 else 2"),
-        Ok(("", mk_if(bool(true), int(1), int(2))))
+        parse_my_if("if 1 then False else True"),
+        Ok(("", mk_if(int(1), bool(false), bool(true))))
+    );
+
+    assert_eq!(
+        parse_my_if("if False then 1 else 2"),
+        Ok(("", mk_if(bool(false), int(1), int(2))))
     );
 }
 
+#[test]
+fn test_parse_my_expr() {
+    assert_eq!(parse_my_expr("True"), Ok(("", bool(true))));
+    assert_eq!(parse_my_expr("False"), Ok(("", bool(false))));
+    assert_eq!(parse_my_expr("p"), Ok(("", var("p"))));
+    assert_eq!(parse_my_expr("poo"), Ok(("", var("poo"))));
+}
+
 pub fn parse_my_expr(input: &str) -> IResult<&str, ParseExpr> {
-    alt((parse_my_bool, parse_my_int, parse_my_var, parse_my_if))(input)
+    alt((parse_my_if, parse_my_bool, parse_my_int, parse_my_var))(input)
 }
