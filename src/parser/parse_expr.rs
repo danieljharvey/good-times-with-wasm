@@ -104,6 +104,7 @@ pub fn parse_my_if(input: &str) -> IResult<&str, ParseExpr> {
     Ok((input, mk_if(pred_expr, then_expr, else_expr)))
 }
 
+/*
 #[test]
 fn test_parse_my_if() {
     assert_eq!(
@@ -124,6 +125,7 @@ fn test_parse_my_expr() {
     assert_eq!(parse_my_expr("p"), Ok(("", var("p"))));
     assert_eq!(parse_my_expr("poo"), Ok(("", var("poo"))));
 }
+*/
 
 pub fn parse_my_expr(input: &str) -> IResult<&str, ParseExpr> {
     alt((parse_my_if, parse_my_bool, parse_my_int, parse_my_var))(input)

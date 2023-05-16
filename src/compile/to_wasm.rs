@@ -1,5 +1,5 @@
 use wasm_encoder::{
-    CodeSection, Export, ExportSection, Function, FunctionSection, Instruction, Module,
+    BlockType, CodeSection, Export, ExportSection, Function, FunctionSection, Instruction, Module,
     TypeSection, ValType,
 };
 
@@ -44,12 +44,33 @@ fn expr_to_function<Ann>(expr: Expr<Ann>) -> wasm_encoder::Function {
     let locals = vec![];
     let mut f = Function::new(locals);
 
+    expr_to_instructions(&mut f, expr);
+
+    f.instruction(&Instruction::End);
+
+    f
+}
+
+fn expr_to_instructions<Ann>(
+    f: &mut wasm_encoder::Function,
+    expr: Expr<Ann>,
+) -> &mut wasm_encoder::Function {
     match expr {
         Expr::EPrim { prim, .. } => f.instruction(&prim_to_const(prim.clone())),
-        _ => &mut f,
-    };
-    f.instruction(&Instruction::End);
-    f
+        Expr::EIf {
+            pred_expr,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            expr_to_instructions(f, *pred_expr);
+            f.instruction(&Instruction::If(BlockType::Result(ValType::I32)));
+            expr_to_instructions(f, *else_expr);
+            expr_to_instructions(f, *then_expr);
+            f.instruction(&Instruction::Else)
+        }
+        _ => f,
+    }
 }
 
 fn prim_to_const(prim: Prim) -> Instruction<'static> {
@@ -61,7 +82,22 @@ fn prim_to_const(prim: Prim) -> Instruction<'static> {
 }
 
 #[test]
-fn run_sample_wasm() {
+fn test_run_sample_wasm_int() {
+    let expr = Expr::EPrim {
+        ann: (),
+        prim: Prim::PInt { int: 21 },
+    };
+    match run_wasm(expr_to_wasm(expr)) {
+        Ok(a) => assert_eq!(a, 21),
+        Err(err) => {
+            println!("{}", err);
+            assert_eq!(true, false)
+        }
+    }
+}
+
+#[test]
+fn test_run_sample_wasm_if() {
     let expr = Expr::EIf {
         ann: (),
         pred_expr: Box::new(Expr::EPrim {
