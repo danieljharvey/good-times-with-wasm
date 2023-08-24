@@ -64,9 +64,9 @@ fn expr_to_instructions<Ann>(
             ..
         } => {
             expr_to_instructions(f, *pred_expr);
-            f.instruction(&Instruction::If(BlockType::Result(ValType::I32)));
-            expr_to_instructions(f, *else_expr);
             expr_to_instructions(f, *then_expr);
+            f.instruction(&Instruction::If(BlockType::Empty)); //Result(ValType::I32)));
+            expr_to_instructions(f, *else_expr);
             f.instruction(&Instruction::Else)
         }
         _ => f,
