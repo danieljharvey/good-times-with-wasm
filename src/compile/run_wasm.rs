@@ -1,5 +1,5 @@
-use crate::ast::pretty::Pretty;
-use crate::ast::types::{BinaryOp, Number, Type, Value, WasmModule};
+use crate::wasm_ast::pretty::Pretty;
+use crate::wasm_ast::types::{BinaryOp, Number, Type, Value, WasmModule};
 use anyhow::Result;
 use wasmtime::*;
 

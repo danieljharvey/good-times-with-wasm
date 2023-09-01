@@ -2,12 +2,12 @@ use interpret::interpreter::interpret_expr;
 use typecheck::elaborate::elaborate_expr;
 use types::expr::{Expr, Prim};
 
-pub mod ast;
 pub mod compile;
 pub mod interpret;
 pub mod parser;
 pub mod typecheck;
 pub mod types;
+pub mod wasm_ast;
 
 // typecheck an arbitrary thing
 fn main() {

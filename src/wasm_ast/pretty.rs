@@ -1,4 +1,4 @@
-use crate::ast::types;
+use crate::wasm_ast::types;
 
 pub trait Pretty {
     // Associated function signature; `Self` refers to the implementor type.
