@@ -20,6 +20,7 @@
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
             cargo
+            just
             cargo-watch
             rustfmt
             libiconv
