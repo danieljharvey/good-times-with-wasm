@@ -1,10 +1,12 @@
-use crate::wasm_ast::pretty::Pretty;
 use crate::wasm_ast::types::{BinaryOp, Number, Type, Value, WasmModule};
 use anyhow::Result;
 use wasmtime::*;
 
+use crate::wasm_ast::pretty::Pretty;
+
 // all wasm we pass in must take two i32 args and return an `i32`
 // we run the `main` function
+#[cfg(test)]
 pub fn run_wasm_from_string(wat_string: String) -> Result<i32> {
     // Modules can be compiled through either the text or binary format
     let engine = Engine::default();
