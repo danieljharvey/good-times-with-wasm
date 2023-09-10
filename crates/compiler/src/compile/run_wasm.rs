@@ -4,12 +4,13 @@ use wasmtime::*;
 
 use crate::wasm_ast::pretty::Pretty;
 
-// all wasm we pass in must take two i32 args and return an `i32`
+// all wasm we pass in must take no args and return an `i32`
 // we run the `main` function
 #[cfg(test)]
 pub fn run_wasm_from_string(wat_string: String) -> Result<i32> {
     // Modules can be compiled through either the text or binary format
     let engine = Engine::default();
+    println!("{}", wat_string);
     let module = Module::new(&engine, wat_string)?;
 
     // Create a `Linker` which will be later used to instantiate this module.
@@ -21,14 +22,14 @@ pub fn run_wasm_from_string(wat_string: String) -> Result<i32> {
     // this case we're using `4` for.
     let mut store = Store::new(&engine, 4);
     let instance = linker.instantiate(&mut store, &module)?;
-    let main_fn = instance.get_typed_func::<(i32, i32), i32>(&mut store, "main")?;
+    let main_fn = instance.get_typed_func::<(), i32>(&mut store, "main")?;
 
     // And finally we can call the wasm!
-    main_fn.call(&mut store, (20, 22))
+    main_fn.call(&mut store, ())
 }
 
 #[test]
-fn test_run_wasm_from_string() {
+fn test_run_wasm_eq_from_ast() {
     // 100 == 1
     let input = WasmModule {
         main: Value::BinaryOp {
@@ -42,4 +43,21 @@ fn test_run_wasm_from_string() {
 
     let result = run_wasm_from_string(wat_string).unwrap();
     assert_eq!(result, 0)
+}
+
+#[test]
+fn test_run_wasm_if_from_ast() {
+    // if 1 then 42 else 41
+    let input = WasmModule {
+        main: Value::Select {
+            pred_expr: Box::new(Value::Const(Number::I32(1))),
+            then_expr: Box::new(Value::Const(Number::I32(42))),
+            else_expr: Box::new(Value::Const(Number::I32(41))),
+        },
+    };
+    let mut wat_string = "".to_string();
+    input.pretty(&mut wat_string);
+
+    let result = run_wasm_from_string(wat_string).unwrap();
+    assert_eq!(result, 42)
 }

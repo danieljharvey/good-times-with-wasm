@@ -10,7 +10,7 @@ impl Pretty for types::WasmModule {
         match self {
             types::WasmModule { main } => {
                 str.push_str("(module ");
-                str.push_str("(func $main (param $lhs i32) (param $rhs i32) (result i32) ");
+                str.push_str("(func $main (result i32) ");
                 main.pretty(str);
                 str.push_str(")"); // end func
                 str.push_str("(export \"main\" (func $main))");
@@ -28,19 +28,49 @@ impl Pretty for types::Number {
     }
 }
 
+fn space(str: &mut String) {
+    str.push_str(" ")
+}
+
+fn open(str: &mut String) {
+    str.push_str("(")
+}
+
+fn close(str: &mut String) {
+    str.push_str(")")
+}
+
 impl Pretty for types::Value {
     fn pretty(&self, str: &mut String) {
         match self {
             types::Value::Const(types::Number::I32(i)) => {
+                open(str);
                 str.push_str("i32.const ");
-                str.push_str(&i.to_string())
+                str.push_str(&i.to_string());
+                close(str)
             }
             types::Value::BinaryOp { op, left, right } => {
+                open(str);
+                op.pretty(str);
+                space(str);
                 left.pretty(str);
-                str.push_str("\n");
+                space(str);
                 right.pretty(str);
-                str.push_str("\n");
-                op.pretty(str)
+                close(str)
+            }
+            types::Value::Select {
+                pred_expr,
+                then_expr,
+                else_expr,
+            } => {
+                open(str);
+                str.push_str("select ");
+                then_expr.pretty(str);
+                space(str);
+                else_expr.pretty(str);
+                space(str);
+                pred_expr.pretty(str);
+                close(str)
             }
         }
     }
@@ -79,7 +109,7 @@ fn test_pretty_const() {
     let input = types::Value::Const(types::Number::I32(100));
     let mut initial = "".to_string();
     input.pretty(&mut initial);
-    assert_eq!(initial, "i32.const 100");
+    assert_eq!(initial, "(i32.const 100)");
 }
 
 #[test]
@@ -91,5 +121,21 @@ fn test_pretty_equals() {
     };
     let mut initial = "".to_string();
     input.pretty(&mut initial);
-    assert_eq!(initial, "i32.const 100\ni32.const 1\ni32.eq");
+    assert_eq!(initial, "(i32.eq (i32.const 100) (i32.const 1))");
+}
+
+#[test]
+fn test_pretty_select() {
+    let input = types::Value::Select {
+        pred_expr: Box::new(types::Value::Const(types::Number::I32(1))),
+        then_expr: Box::new(types::Value::Const(types::Number::I32(42))),
+        else_expr: Box::new(types::Value::Const(types::Number::I32(41))),
+    };
+
+    let mut initial = "".to_string();
+    input.pretty(&mut initial);
+    assert_eq!(
+        initial,
+        "(select (i32.const 42) (i32.const 41) (i32.const 1))"
+    );
 }

@@ -9,6 +9,11 @@ pub enum Value {
         left: Box<Value>,
         right: Box<Value>,
     },
+    Select {
+        pred_expr: Box<Value>,
+        then_expr: Box<Value>,
+        else_expr: Box<Value>,
+    },
 }
 
 pub enum Type {
