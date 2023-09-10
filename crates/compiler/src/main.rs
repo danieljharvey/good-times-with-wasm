@@ -7,7 +7,6 @@ pub mod interpret;
 pub mod parser;
 pub mod typecheck;
 pub mod types;
-pub mod wasm_ast;
 
 // typecheck an arbitrary thing
 fn main() {
